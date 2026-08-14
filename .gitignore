@@ -1,0 +1,19 @@
+# Zephyr / west build output
+build/
+build-*/
+.west/
+twister-out*/
+
+# eLichens documentation is confidential and must never be committed.
+# Property of eLichens SA. Implementing the protocol is fine; redistributing
+# their documents is not.
+*eLichens*.pdf
+*ELUM-MS*
+docs/vendor/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+*.swp

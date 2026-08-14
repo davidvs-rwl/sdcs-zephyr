@@ -1,0 +1,54 @@
+/*
+ * nRF9151-DK overlay: dedicate UARTE2 to the eLichens Mulberry.
+ *
+ * Pin choice is NOT arbitrary. Verified against the stock board files
+ * (zephyr/boards/nordic/nrf9151dk/, v4.2.1):
+ *
+ *   P0.00  LED1 + pwm0        P0.14  uart0 RTS (A0)
+ *   P0.01  LED2               P0.15  uart0 CTS (A1)
+ *   P0.02  FREE          (D2) P0.16  uart1 RTS (A2)
+ *   P0.03  FREE          (D3) P0.17  uart1 CTS (A3)
+ *   P0.04  LED3               P0.18  Button3 (A4)
+ *   P0.05  LED4               P0.19  Button4 / PCAL6408A INT (A5)
+ *   P0.06  FREE          (D6) P0.20  spi3 CS2
+ *   P0.07  FREE          (D7) P0.21  nRF5340 reset (disabled)
+ *   P0.08  Button1       (D8) P0.26  uart0 RX  <- console
+ *   P0.09  Button2       (D9) P0.27  uart0 TX  <- console
+ *   P0.10  spi3 CS      (D10) P0.28  uart1 RX  <- VCOM1
+ *   P0.11  spi3 MOSI    (D11) P0.29  uart1 TX  <- VCOM1
+ *   P0.12  spi3 MISO    (D12) P0.30  i2c2 SDA (D14)
+ *   P0.13  spi3 SCK     (D13) P0.31  i2c2 SCL (D15)
+ *
+ * Only P0.02, P0.03, P0.06 and P0.07 are unclaimed and brought out to the
+ * Arduino digital header. We take D6/D7 (P0.06/P0.07): adjacent pins, no
+ * peripheral contention, no need to disable anything the board already
+ * enables.
+ */
+
+&pinctrl {
+	uart2_default: uart2_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 6)>;    /* D6 -> sensor RX (pin 4) */
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 7)>;    /* D7 <- sensor TX (pin 3) */
+			bias-pull-up;   /* idle-high if the sensor is unplugged */
+		};
+	};
+
+	uart2_sleep: uart2_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 6)>,
+				<NRF_PSEL(UART_RX, 0, 7)>;
+			low-power-enable;
+		};
+	};
+};
+
+&uart2 {
+	status = "okay";
+	current-speed = <9600>;   /* Mulberry: 9600 8N1, no parity, no flow ctrl */
+	pinctrl-0 = <&uart2_default>;
+	pinctrl-1 = <&uart2_sleep>;
+	pinctrl-names = "default", "sleep";
+};
