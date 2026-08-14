@@ -21,8 +21,14 @@
  *
  * Only P0.02, P0.03, P0.06 and P0.07 are unclaimed and brought out to the
  * Arduino digital header. We take D6/D7 (P0.06/P0.07): adjacent pins, no
- * peripheral contention, no need to disable anything the board already
- * enables.
+ * pin contention.
+ *
+ * There IS instance contention, however. On the nRF91 series UARTE2, SPIM2,
+ * SPIS2, TWIM2 and TWIS2 are one peripheral, not five: all at 0x4000A000,
+ * all on IRQ 10. The board enables i2c2 (= TWIM2) as `arduino_i2c` on
+ * D14/D15, so enabling uart2 without disabling i2c2 puts two Zephyr drivers
+ * on the same registers. Different pins, so nothing in the build complains —
+ * it just fails on the bench. i2c2 is disabled below.
  */
 
 &pinctrl {
@@ -43,6 +49,15 @@
 			low-power-enable;
 		};
 	};
+};
+
+/*
+ * TWIM2 shares its register block and IRQ with UARTE2 (see header comment).
+ * Nothing on this build uses the Arduino I2C header, so give the instance
+ * to the sensor UART outright.
+ */
+&i2c2 {
+	status = "disabled";
 };
 
 &uart2 {
