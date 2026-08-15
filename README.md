@@ -4,6 +4,13 @@ Milestone 1 firmware: prove the UART link to the eLichens Mulberry
 (MULBERRY-13 / MUL13442-Safety-CH4-5-vol) and stream parsed readings to the
 VCOM console. No modem, no power gating, no storage yet.
 
+[`docs/decisions.md`](docs/decisions.md) is the engineering decision log for
+this bring-up — why the pins, the bootloader, the voltages and the loopback
+test are the way they are, including the ones we got wrong first. It also
+covers how to confirm a devicetree resolved as intended, how to prove firmware
+is executing without RTT, and how to test a UART link before connecting
+anything to it.
+
 ## Before you flash
 
 1. **Set VDD_GPIO to 3 V.** The nRF9151-DK has *no* voltage-select switch
