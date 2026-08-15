@@ -28,9 +28,9 @@ should not drive design decisions yet.
 | Console UART | uart0, 115200, VCOM0 |
 | Dev host | MacBook |
 
-A Raspberry Pi 5 (`rl-pi-001`) runs a known-good Python implementation of the
-same protocol (`mulberry_sdcs.py`). When nRF behavior is ambiguous, the Pi is
-the reference — compare bytes on the wire, don't guess.
+A bench Raspberry Pi 5 runs a known-good Python implementation of the same
+protocol (`mulberry_sdcs.py`). When nRF behavior is ambiguous, the Pi is the
+reference — compare bytes on the wire, don't guess.
 
 ## Hard constraints — do not violate
 
