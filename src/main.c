@@ -59,20 +59,50 @@ static int run_loopback(void)
 	printk("Jumper D6 (P0.06) to D7 (P0.07), then reset.\n");
 	printk("Sending a real GET_MODEL_NAME frame at 9600 8N1...\n");
 
+	/* Send one byte, read it back, repeat.
+	 *
+	 * The obvious version - transmit all nine bytes and then read the
+	 * echo - does not work here. uart_poll_out() blocks until each byte
+	 * is on the wire, so with TX looped to RX the whole frame arrives
+	 * before anything drains it, and the result depends on how much the
+	 * UARTE poll-mode RX path happens to buffer rather than on the
+	 * wiring. That version dropped byte 8 of 9 reproducibly while every
+	 * other byte came back correct.
+	 *
+	 * Interleaving keeps at most one byte in flight, so a failure here
+	 * means the pins, the jumper or the baud rate - which is the only
+	 * thing this test is meant to prove.
+	 */
+	size_t failed_at = sizeof(pattern);
+
 	for (size_t i = 0; i < sizeof(pattern); i++) {
+		/* One byte at 9600 8N1 is ~1.04 ms on the wire, plus the
+		 * driver's turnaround. 50 ms is far more than enough and
+		 * still fails fast when nothing is connected.
+		 */
+		int64_t deadline = k_uptime_get() + 50;
+		bool echoed = false;
+
 		uart_poll_out(sensor_uart, pattern[i]);
-	}
 
-	/* 9 bytes at 9600 baud is ~9.4 ms. Allow generous margin. */
-	int64_t deadline = k_uptime_get() + 500;
+		while (k_uptime_get() < deadline) {
+			uint8_t b;
 
-	while (n < sizeof(pattern) && k_uptime_get() < deadline) {
-		uint8_t b;
+			if (uart_poll_in(sensor_uart, &b) == 0) {
+				got[n++] = b;
+				echoed = true;
+				break;
+			}
+			/* Busy-wait rather than k_sleep(): a tick is 10 ms
+			 * by default, which would allow only a handful of
+			 * polls inside the deadline.
+			 */
+			k_busy_wait(100);
+		}
 
-		if (uart_poll_in(sensor_uart, &b) == 0) {
-			got[n++] = b;
-		} else {
-			k_sleep(K_MSEC(1));
+		if (!echoed) {
+			failed_at = i;
+			break;
 		}
 	}
 
@@ -87,9 +117,12 @@ static int run_loopback(void)
 	printk("(%u/%u bytes)\n", (unsigned)n, (unsigned)sizeof(pattern));
 
 	if (n != sizeof(pattern)) {
-		printk("\nRESULT: FAIL - wrong count.\n"
-		       "  0 bytes      -> jumper missing, or wrong header pins\n"
-		       "  partial/garbage -> baud mismatch or pin contention\n");
+		printk("\nRESULT: FAIL - no echo for byte %u (0x%02X).\n",
+		       (unsigned)failed_at, pattern[failed_at]);
+		printk("  failed on byte 0 -> jumper missing, or wrong "
+		       "header pins\n"
+		       "  failed later     -> intermittent contact, or "
+		       "another peripheral on P0.06/P0.07\n");
 		return -EIO;
 	}
 	if (memcmp(pattern, got, n) != 0) {
