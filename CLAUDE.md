@@ -34,15 +34,24 @@ reference — compare bytes on the wire, don't guess.
 
 ## Hard constraints — do not violate
 
-1. **`VDD_GPIO` must be 3 V.** The nRF9151-DK has no voltage-select switch
-   (unlike the nRF9160-DK) and defaults to 1.8 V. It is changed in nRF Connect
-   for Desktop → Board Configurator. At 1.8 V the sensor's RX threshold
-   (2.0 V min) is not met and the sensor's ~2.8 V TX exceeds the nRF's
-   abs-max of VDD+0.3 V.
+1. **`VDD_GPIO` is 3.3 V, never 1.8 V.** The nRF9151-DK has no voltage-select
+   switch (unlike the nRF9160-DK) and defaults to 1.8 V. It is changed in nRF
+   Connect for Desktop → Board Configurator. At 1.8 V the link fails in both
+   directions at once: the sensor's RX threshold (2.0 V min) is not met, and
+   the sensor's TX (2.9 V max, 2.8 V measured on SN03160399) exceeds the
+   nRF's abs-max of VDD+0.3 V, which is 2.1 V at that setting.
+
+   3.0 V satisfies both constraints too. 3.3 V is the standing choice for the
+   extra headroom where the failure damages hardware rather than merely
+   garbling: 0.7 V of margin against the sensor's TX instead of 0.4 V. The
+   loopback test cannot verify any of this — the nRF drives and reads its own
+   pin — so it is a meter check before anything is connected.
 
 2. **Sensor VCC is 5 V, not 3 V.** Supply range is 3–5 V, but the PVD
-   threshold is 2.85 V min; below it the sensor answers UART but performs no
-   gas measurement. 3 V leaves no margin.
+   threshold is 2.85 V min; below it the sensor answers UART and returns
+   well-formed frames but performs no gas measurement. 3 V leaves 0.15 V of
+   margin against that threshold; 5 V leaves 2.15 V. The failure mode is
+   invisible at the protocol layer, which is why the margin matters.
 
 3. **Never commit the eLichens documentation.** The protocol spec
    (`eLichens_Sensors_CommunicationProtocol`) and the Mulberry user manual are

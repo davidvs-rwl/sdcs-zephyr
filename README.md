@@ -13,16 +13,26 @@ anything to it.
 
 ## Before you flash
 
-1. **Set VDD_GPIO to 3 V.** The nRF9151-DK has *no* voltage-select switch
+1. **Set VDD_GPIO to 3.3 V.** The nRF9151-DK has *no* voltage-select switch
    (unlike the nRF9160-DK). It boots at **1.8 V** by default. Change it in
-   **nRF Connect for Desktop -> Board Configurator -> VDD_GPIO -> 3 V**.
-   At 1.8 V the sensor's RX threshold (2.0 V min) is not met, and the
-   sensor's ~2.8 V TX output would exceed the nRF's abs-max of VDD+0.3 V.
+   **nRF Connect for Desktop -> Board Configurator -> VDD_GPIO**.
+   At 1.8 V the link fails in both directions at once: the sensor's RX
+   threshold (2.0 V min) is not met, and the sensor's TX (2.9 V max) exceeds
+   the nRF's abs-max of VDD+0.3 V, which is 2.1 V at that setting.
+
+   3.0 V also satisfies both constraints. 3.3 V is preferred for the extra
+   headroom on the abs-max side — 0.7 V of margin against the sensor's TX
+   rather than 0.4 V. See [`docs/decisions.md`](docs/decisions.md) for the
+   full reasoning.
 
 2. **Meter check before connecting anything.**
-   - DK VDD/GPIO rail reads ~3.0 V
+   - DK VDD/GPIO rail reads ~3.3 V
    - Mulberry TX (pin 3) idles high at ~2.8 V with the sensor powered
      from 5 V and TX not yet connected to the DK
+
+   The loopback test cannot check this. The nRF drives and reads its own pin
+   through the jumper, so it passes at 1.8 V exactly as happily as at 3.3 V.
+   Levels are a meter check, not a firmware check.
 
 3. **Socket the sensor.** Never solder it. Mill-Max
    0364-0-15-15-13-27-10-0 (per eLichens support) or equivalent.
