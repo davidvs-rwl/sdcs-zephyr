@@ -22,6 +22,13 @@ LOG_MODULE_REGISTER(sdcs, LOG_LEVEL_INF);
 
 #define RX_RING_SIZE 256
 
+/* Bring-up diagnostic: dump every well-formed response frame as raw hex
+ * before anything parses it, and call out the gas field with the offset it
+ * was read from. Set to 0 for normal operation - at 1 Hz with a full
+ * Mulberry data pack this roughly triples console traffic.
+ */
+#define SDCS_LOG_RAW_FRAMES 0
+
 static const struct device *uart;
 static uint8_t rx_ring_buf[RX_RING_SIZE];
 static struct ring_buf rx_ring;
@@ -227,6 +234,18 @@ int sdcs_transact(uint8_t cmd, const uint8_t *req, size_t req_len,
 			continue;   /* framing/CRC error - a resend is reasonable */
 		}
 
+#if SDCS_LOG_RAW_FRAMES
+		/* Whole frame, SOP through EOP, exactly as it came off the
+		 * wire. Dumped here so field offsets can be checked by hand
+		 * against the Pi reference without trusting the parser.
+		 */
+		printk("rx cmd 0x%02x (%d B): ", cmd, flen);
+		for (int k = 0; k < flen; k++) {
+			printk("%02X ", rbuf[k]);
+		}
+		printk("\n");
+#endif
+
 		tx_index++;
 
 		uint8_t rcmd = rbuf[5];
@@ -353,6 +372,11 @@ int sdcs_get_data_pack(uint16_t bitmap, struct sdcs_reading *out)
 					      ((uint32_t)d[i + 1] << 16) |
 					      ((uint32_t)d[i + 2] << 8) |
 					      d[i + 3]);
+#if SDCS_LOG_RAW_FRAMES
+		printk("  gas @payload[%u]: %02X %02X %02X %02X -> %d ppm*100\n",
+		       (unsigned)i, d[i], d[i + 1], d[i + 2], d[i + 3],
+		       (int)out->gas_ppm_x100);
+#endif
 		i += 4;
 		out->have_gas = true;
 	}
